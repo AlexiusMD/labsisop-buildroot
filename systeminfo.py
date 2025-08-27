@@ -5,6 +5,7 @@ import time
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
+import fcntl 
 
 # Todos os tipos de whitespace a serem removidos de strings
 whitespace: str = "\n\t\r\f\v "
@@ -92,8 +93,23 @@ def get_disks() -> list[dict]:
                 })
     return disk_list  # lista de { "device": str, "size_mb": int }
 
-def get_usb_devices():
-    return []  # lista de { "port": str, "description": str }
+def get_usb_devices() -> list[dict[str,str]]:
+    usb_devices: list[dict[str,str]] = []
+    usb_dirs = os.listdir('/sys/bus/usb/devices')
+    for dir in usb_dirs:
+        usb_files = os.listdir(f"/sys/bus/usb/devices/{dir}")
+        if "product" not in usb_files or dir.startswith("usb"):
+            continue
+        
+        with open(f"/sys/bus/usb/devices/{dir}/product") as product_file:
+            dev_name = product_file.readlines()
+
+            usb_devices.append({
+                "port": dir,
+                "description": dev_name[0].strip(whitespace)
+            })
+            
+    return usb_devices  # lista de { "port": str, "description": str }
 
 def get_network_adapters() -> dict[str,str]:
     adapters: dict[str, str] = []
