@@ -1,0 +1,21 @@
+#!/bin/sh
+
+case "$1" in
+  start)
+    echo "Starting systeminfo..."
+    /usr/bin/python3 /etc/init.d/systeminfo.py &
+    ;;
+  stop)
+    echo "Stopping systeminfo..."
+    ;;
+  restart)
+    $0 stop
+    $0 start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+    exit 1
+    ;;
+esac
+
+exit 0

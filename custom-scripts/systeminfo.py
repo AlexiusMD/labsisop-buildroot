@@ -5,7 +5,9 @@ import time
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
-import fcntl 
+import socket
+import fcntl
+import struct
 
 # Todos os tipos de whitespace a serem removidos de strings
 whitespace: str = "\n\t\r\f\v "
@@ -23,12 +25,43 @@ def get_info_file_dict(resource_name: str) -> dict[str, str]:
             else:
                 continue
 
-    return info_dict     
+    return info_dict
+
+def read_cpu():
+    with open("/proc/stat", "r") as f:
+        line = f.readline()
+    parts = line.split()[1:]  # descarta 'cpu'
+    values = list(map(int, parts))
+    idle = values[3]
+    total = sum(values)
+    return idle, total
+
+def get_cpu_usage_percent(interval: float = 0.1) -> float:
+    idle1, total1 = read_cpu()
+    time.sleep(interval)
+    idle2, total2 = read_cpu()
+
+    diff_idle = idle2 - idle1
+    diff_total = total2 - total1
+
+    usage = (1 - diff_idle / diff_total) * 100 if diff_total > 0 else 0.0
+    return round(usage, 1)
+
+def get_ip_address(ifname: str) -> str:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        return socket.inet_ntoa(fcntl.ioctl(
+            s.fileno(),
+            0x8915,  # SIOCGIFADDR
+            struct.pack('256s', ifname[:15].encode('utf-8'))
+        )[20:24])
+    except OSError:
+        return ""
 
 def get_datetime() -> str:
     with open("/sys/class/rtc/rtc0/since_epoch") as rtc_file:
         curr_time = float(rtc_file.read())
-        return datetime.fromtimestamp(curr_time).isoformat()
+        return datetime.fromtimestamp(curr_time).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def get_uptime() -> str:
@@ -42,7 +75,7 @@ def get_cpu_info():
     return {
         "model": cpu_info.get("model name"),
         "speed_mhz": cpu_info.get("cpu MHz"),
-        "usage_percent": 0.0 # Vamo pedir pro sor
+        "usage_percent": f"{get_cpu_usage_percent()}%"
     }
 
 def get_memory_info() -> dict[str,str]:
@@ -65,7 +98,7 @@ def get_memory_info() -> dict[str,str]:
 
 def get_os_version() -> str:
     with open("/proc/version", "r") as version_file:
-        return version_file.read()
+        return version_file.read().strip(whitespace)
 
 def get_process_list() -> list[dict]:
     proc_dir = os.listdir('/proc')
@@ -117,9 +150,11 @@ def get_network_adapters() -> dict[str,str]:
     with open("/proc/net/dev") as interface_list:
         lines = interface_list.readlines()[2:]
         for line in lines:
-           adapters.append({
-                "interface": line.split()[0].strip(whitespace),
-                "ip_address": "" # we dont got that yet
+            iface = line.split()[0].strip(":")
+            ip = get_ip_address(iface)
+            adapters.append({
+                "interface": iface,
+                "ip_address": ip
             })
     
     return adapters # lista de { "interface": str, "ip_address": str }
