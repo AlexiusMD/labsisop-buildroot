@@ -9,20 +9,31 @@ Este programa implementa um servidor HTTP em Python que expõe informações do 
 - Buildroot com suporte a `/proc` e `/sys` habilitado
 
 ### Execução
-1. Copie o arquivo `systeminfo.py` para o sistema alvo.
+1. Copie o arquivo `systeminfo.py` para o sistema alvo. 
+
 2. Garanta que o arquivo seja executável:
    ```bash
    chmod +x systeminfo.py
    ```
-3. Inicie o servidor:
+3. Inicie a máquina target (assumindo imagens de kernel e hda em `/output/images`):
+    ```bash
+    sudo qemu-system-i386 --device e1000,netdev=eth0,mac=aa:bb:cc:dd:ee:ff \
+    --netdev tap,id=eth0,script=custom-scripts/qemu-ifup \
+    --kernel output/images/bzImage \
+    --hda output/images/rootfs.ext2 --nographic \
+    --append "console=ttyS0 root=/dev/sda" 
+    ```
+4. Inicie o servidor na máquina target (no caso de ausência de scripts de pre-build):
    ```bash
-   ./systeminfo.py
+   python3 systeminfo.py
    ```
-4. Acesse via navegador ou `curl`:
+5. Acesse via `curl`:
    ```bash
    curl http://<ip-do-dispositivo>:8080/status
    ```
-No ambiente do codespaces onde o trabalho foi desenvolvido, o arquivo systeminfo.py e um script shell para sua execução foram inclusos na basta buildroot/custom-scripts, além de serem movidos a /etc/init.d do computador target a partir do pre-build.sh
+
+#### Observações
+No ambiente do codespaces onde o trabalho foi desenvolvido, o arquivo `systeminfo.py` e um script shell para sua execução foram inclusos na pasta `$BASEDIR$/custom-scripts`, além de serem movidos a `/etc/init.d` do computador target a partir do `pre-build.sh`, que estão anexados junto do código fonte. Além disso, fica subentendido que a máquina target já tem configuração de endereçamento de rede definida anteriormente à execução do programa, caso contrário **NÃO** é possível enviar requisições via `curl` para a máquina target. A ideia é executar instantaneamente o servidor ao iniciar o emulador `QEMU`.
 ## Capturas de Tela das Respostas do Endpoint /status
 
 ![Captura de tela contendo exemplo de resposta (1-1)](./exec1-1.jpeg)
@@ -247,7 +258,7 @@ Abaixo, uma explicação breve de como cada campo do JSON de resposta é extraí
 
 - **cpu**  
   - **model** e **speed_mhz**: extraídos de `/proc/cpuinfo` usando a função `get_info_file_dict`.  
-  - **usage_percent**: calculado a partir de `/proc/stat`. A função lê duas vezes os valores de tempo de CPU (idle e total), com um pequeno intervalo. Em seguida calcula a porcentagem de uso com a fórmula `(1 - idle_diff / total_diff) * 100`.
+  - **usage_percent**: calculado a partir de `/proc/stat`. A função lê duas vezes os valores de tempo de CPU (idle e total), com um pequeno intervalo. Em seguida calcula a porcentagem de uso com a fórmula `(1 - idle_diff / total_diff) * 100`. O método para cálculo do `usage_percent` veio de um trecho de código `bash` do [GitHub](https://gist.github.com/pcolby/6558833).
 
 - **memory**  
   Obtido de `/proc/meminfo`. Os campos `MemTotal` e `MemFree` são usados para calcular:  
@@ -264,7 +275,7 @@ Abaixo, uma explicação breve de como cada campo do JSON de resposta é extraí
   Obtido de `/proc/partitions`. O código ignora o cabeçalho e processa cada linha para extrair o nome do dispositivo (ex: `sda`, `mmcblk0`) e o tamanho em MB (convertido de KB).
 
 - **usb_devices**  
-  Percorre os diretórios em `/sys/bus/usb/devices`. Para cada dispositivo válido (que contém o arquivo `product`), lê a descrição de `/sys/bus/usb/devices/<dir>/product` e retorna `{ port, description }`.
+  Percorre os diretórios em `/sys/bus/usb/devices`. Para cada dispositivo válido (que contém o arquivo `product`), lê a descrição de `/sys/bus/usb/devices/<dir>/product` e retorna `{ port, description }`. Como no container do codespaces não há nenhum, a lista é retornada vazia.
 
 - **network_adapters**  
-  Lido de `/proc/net/dev`, que lista interfaces de rede. Cada linha contém estatísticas; o código extrai o nome da interface e tenta obter o endereço IP associado através de chamada `ioctl` (`SIOCGIFADDR`). Cada item da lista contém `{ interface, ip_address }`.
+  Lido de `/proc/net/dev`, que lista interfaces de rede. Cada linha contém estatísticas; o código extrai o nome da interface e tenta obter o endereço IP associado através de chamada `ioctl` (`SIOCGIFADDR`). Cada item da lista contém `{ interface, ip_address }`. O método para obtenção dos endereços IPv4 das interfaces de rede da máquina target foram obtidas a partir de uma thread do [Stack Overflow](https://stackoverflow.com/questions/24196932/how-can-i-get-the-ip-address-from-a-nic-network-interface-controller-in-python).
