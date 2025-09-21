@@ -393,3 +393,4 @@
 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
 385	i386	listProcessInfo		sys_listProcessInfo
 386 i386    listProcessSleeping   sys_listProcessSleeping
+387 i386    writeToLog  sys_writeToLog

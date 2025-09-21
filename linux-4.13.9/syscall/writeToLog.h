@@ -1,0 +1,1 @@
+asmlinkage long sys_writeToLog(const char __user *buf, int size);

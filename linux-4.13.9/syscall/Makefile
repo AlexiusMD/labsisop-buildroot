@@ -1,1 +1,1 @@
-obj-y:=processInfo.o processSleeping.o
+obj-y:=processInfo.o processSleeping.o writeToLog.o
