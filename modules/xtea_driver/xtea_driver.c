@@ -266,7 +266,7 @@ static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, lof
  */
 static int dev_release(struct inode *inodep, struct file *filep){
 	printk(KERN_INFO "XTEA Driver: device successfully closed\n");
-	return 0;`
+	return 0;
 }
 
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
