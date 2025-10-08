@@ -121,6 +121,11 @@ static inline void cpu_load_update_active(struct rq *this_rq) { }
  */
 #define RUNTIME_INF	((u64)~0ULL)
 
+static inline int idle_low_policy(int policy)
+{
+	return policy == SCHED_LOW_IDLE;
+}
+
 static inline int idle_policy(int policy)
 {
 	return policy == SCHED_IDLE;
@@ -142,7 +147,7 @@ static inline int dl_policy(int policy)
 static inline bool valid_policy(int policy)
 {
 	return idle_policy(policy) || fair_policy(policy) ||
-		rt_policy(policy) || dl_policy(policy);
+		rt_policy(policy) || dl_policy(policy) || idle_low_policy(policy);
 }
 
 static inline int task_has_rt_policy(struct task_struct *p)
@@ -1352,6 +1357,9 @@ static inline void finish_lock_switch(struct rq *rq, struct task_struct *prev)
 
 #define WEIGHT_IDLEPRIO                3
 #define WMULT_IDLEPRIO         1431655765
+
+#define WEIGHT_LOW_IDLEPRIO                1
+#define WMULT_LOW_IDLEPRIO         1431655765
 
 extern const int sched_prio_to_weight[40];
 extern const u32 sched_prio_to_wmult[40];
