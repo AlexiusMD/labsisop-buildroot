@@ -1,1 +1,0 @@
-cmd_/workspaces/labsisop-buildroot/modules/xtea_driver/xtea_driver.ko := ld -r -m elf_i386 -T ./scripts/module-common.lds --build-id  -o /workspaces/labsisop-buildroot/modules/xtea_driver/xtea_driver.ko /workspaces/labsisop-buildroot/modules/xtea_driver/xtea_driver.o /workspaces/labsisop-buildroot/modules/xtea_driver/xtea_driver.mod.o ;  true
