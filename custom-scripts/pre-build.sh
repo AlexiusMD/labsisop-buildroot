@@ -10,4 +10,13 @@ if [ -d "$BASE_DIR" ]; then
 
     # Copy thread runner script to kernel
     make -C "$BASE_DIR/../custom-scripts/setpriority-master/"
+
+    # Copy thread profiler to kernel
+    make -C "$BASE_DIR/../custom-scripts/thread_profiler/"
+
+    # Clean up build files
+    make -C "$BASE_DIR/../modules/simple_driver_original/" clean
+    make -C "$BASE_DIR/../modules/xtea_driver/" clean
+    make -C "$BASE_DIR/../custom-scripts/setpriority-master/" clean
+    make -C "$BASE_DIR/../custom-scripts/thread_profiler/" clean
 fi
