@@ -4,6 +4,7 @@
 #include <semaphore.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/types.h>
 #include <linux/sched.h>
 #include <thread_profiler.h>
 
@@ -11,9 +12,27 @@ char *buffer;
 char *ptr;
 size_t buffer_size;
 sem_t buffer_lock;
+pthread_barrier_t start_barrier;
+char last_thread_id = '\0'; // Track last written id on the buffer
+
+char* policy_to_string(int policy) {
+    switch(policy) {
+        case SCHED_FIFO: return "SCHED_FIFO";
+        case SCHED_RR: return "SCHED_RR";
+        case SCHED_BATCH: return "SCHED_BATCH";
+        case SCHED_IDLE: return "SCHED_IDLE";
+        case SCHED_DEADLINE: return "SCHED_DEADLINE";
+        case SCHED_OTHER: return "SCHED_OTHER";
+        default: return "UNKNOWN";
+    }
+}
 
 void* work(void* arg) {
     thread_info_t* info = (thread_info_t*) arg;
+
+    pthread_barrier_wait(&start_barrier);
+    sleep(1);
+    printf("Thread %c started with policy %s and priority %d\n", info->id, policy_to_string(info->policy), info->priority);
 
     while (1) {
         sem_wait(&buffer_lock);
@@ -25,10 +44,17 @@ void* work(void* arg) {
 
         *ptr = info->id;
         ptr++;
-        info->count++;
+
+        if (last_thread_id != info->id) {
+            info->count++;
+            last_thread_id = info->id;
+        }
 
         sem_post(&buffer_lock);
-        sched_yield();
+        
+        if (info->policy == SCHED_RR) {
+            sched_yield();
+        }
     }
 
     return NULL;
@@ -90,6 +116,7 @@ int main(int argc, char* argv[]) {
 
     // Initialize semaphore
     sem_init(&buffer_lock, 0, 1);
+    pthread_barrier_init(&start_barrier, NULL, num_threads);
 
     // Allocate worker thread buffers
     pthread_t threads[num_threads];
@@ -120,13 +147,13 @@ int main(int argc, char* argv[]) {
         // Set thread scheduling policy
         pthread_attr_t attr;
         pthread_attr_init(&attr);
-        pthread_attr_setschedpolicy(&attr, info[i].policy);
-
-        // Set thread scheduling priority
+        
         struct sched_param param;
         param.sched_priority = info[i].priority;
-        pthread_attr_setschedparam(&attr, &param);
+
         pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+        pthread_attr_setschedpolicy(&attr, info[i].policy);
+        pthread_attr_setschedparam(&attr, &param);
 
         // Creates thread
         if (pthread_create(&threads[i], &attr, work, &info[i]) != 0) {
@@ -142,11 +169,6 @@ int main(int argc, char* argv[]) {
         pthread_join(threads[i], NULL);
     }
 
-    // Show buffer content after all writes ended
-    printf("Thread scheduling results:\n\n");
-    fwrite(buffer, 1, buffer_size, stdout);
-    printf("\n\n");
-
     // Displays every context switch once
     printf("Compacting the buffer:\n");
     char current_char = buffer[0];
@@ -159,13 +181,14 @@ int main(int argc, char* argv[]) {
     printf("%c\n", current_char);
 
 
-    // Show how many times each thread worked
-    printf("Thread work counts:\n");
+    // Show how many times each thread switched
+    printf("Thread scheduling counts:\n");
     for (int i = 0; i < num_threads; i++) {
         printf("%c: %d\n", info[i].id, info[i].count);
     }
 
     free(buffer);
     sem_destroy(&buffer_lock);
+    pthread_barrier_destroy(&start_barrier);
     return EXIT_SUCCESS;
 }
