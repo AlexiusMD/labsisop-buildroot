@@ -23,6 +23,7 @@ char* policy_to_string(int policy) {
         case SCHED_IDLE: return "SCHED_IDLE";
         case SCHED_DEADLINE: return "SCHED_DEADLINE";
         case SCHED_OTHER: return "SCHED_OTHER";
+        case SCHED_LOW_IDLE: return "SCHED_LOW_IDLE";
         default: return "UNKNOWN";
     }
 }
