@@ -10,7 +10,8 @@
 typedef struct thread_info_t
 {
     char id;
-    unsigned int count;
+    unsigned int sched_count;
+    unsigned int write_count;
     unsigned int priority;
     unsigned int policy;
 } thread_info_t;

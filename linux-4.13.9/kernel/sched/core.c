@@ -4059,8 +4059,12 @@ recheck:
 		 * Treat SCHED_IDLE as nice 20. Only allow a switch to
 		 * SCHED_NORMAL if the RLIMIT_NICE would normally permit it.
 		 */
-		if ((idle_policy(p->policy) && !idle_policy(policy) ) ||
-		    (idle_low_policy(policy) && !idle_low_policy(p->policy))) {
+		if ((idle_policy(p->policy) && !idle_policy(policy) )) {
+			if (!can_nice(p, task_nice(p)))
+				return -EPERM;
+		}
+
+		if ((idle_low_policy(p->policy) && !idle_low_policy(policy) )) {
 			if (!can_nice(p, task_nice(p)))
 				return -EPERM;
 		}
